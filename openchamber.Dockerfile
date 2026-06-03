@@ -40,14 +40,23 @@ RUN userdel bun \
   && useradd -u 1000 -g 1000 -m -s /bin/bash openchamber \
   && chown -R openchamber:openchamber /home/openchamber
 
-# Switch to openchamber user
-USER openchamber
-
 ENV NPM_CONFIG_PREFIX=/home/openchamber/.npm-global
 ENV PATH=${NPM_CONFIG_PREFIX}/bin:${PATH}
 
-RUN npm config set prefix /home/openchamber/.npm-global && mkdir -p /home/openchamber/.npm-global && \
-  mkdir -p /home/openchamber/.local /home/openchamber/.config /home/openchamber/.ssh && \
+# Create required directories before dropping privileges so we can set ownership
+RUN mkdir -p /home/openchamber/.npm-global \
+             /home/openchamber/.local/share/opencode \
+             /home/openchamber/.local/state/opencode \
+             /home/openchamber/.config/opencode \
+             /home/openchamber/.config/openchamber \
+             /home/openchamber/.ssh \
+             /home/openchamber/workspaces \
+  && chown -R openchamber:openchamber /home/openchamber
+
+# Switch to openchamber user AFTER directories are created and owned by them
+USER openchamber
+
+RUN npm config set prefix /home/openchamber/.npm-global && \
   npm install -g opencode-ai
 
 # cloudflared 2026.3.0 - update digest explicitly when upgrading
