@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  9router:
+    image: ghcr.io/9router/9router:latest # Placeholder, verify correct image
+    container_name: 9router
+    restart: unless-stopped
+    ports:
+      - "8085:8080" # Mapping to available port 8085 (8080 internal)
+    volumes:
+      - 9router-data:/app/data
+    environment:
+      - NODE_ENV=production
+
+  openchamber:
+    image: ghcr.io/openchamber/openchamber:latest # Placeholder, verify correct image
+    container_name: openchamber
+    restart: unless-stopped
+    ports:
+      - "3051:3000" # Mapping to available port 3051 (3000 internal)
+    volumes:
+      - openchamber-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - N9ROUTER_URL=http://9router:8080
+
+volumes:
+  9router-data:
+  openchamber-data:
