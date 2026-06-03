@@ -14,7 +14,7 @@ services:
       - DATA_DIR=/app/data
 
   openchamber:
-    build: https://github.com/openchamber/openchamber.git#main
+    image: ghcr.io/btriapitsyn/openchamber:latest
     container_name: openchamber
     restart: unless-stopped
     ports:
