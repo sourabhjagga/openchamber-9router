@@ -14,7 +14,9 @@ services:
       - DATA_DIR=/app/data
 
   openchamber:
-    image: ghcr.io/btriapitsyn/openchamber:latest
+    build:
+      context: .
+      dockerfile: openchamber.Dockerfile
     container_name: openchamber
     restart: unless-stopped
     ports:
