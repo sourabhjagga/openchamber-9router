@@ -14,17 +14,28 @@ services:
       - DATA_DIR=/app/data
 
   openchamber:
-    image: ghcr.io/openchamber/openchamber:latest
+    build: https://github.com/openchamber/openchamber.git#main
     container_name: openchamber
     restart: unless-stopped
     ports:
       - "3051:3000" # Mapping to available port 3051 (3000 internal)
     volumes:
-      - openchamber-data:/app/data
+      - openchamber-config:/home/openchamber/.config/openchamber
+      - openchamber-share:/home/openchamber/.local/share/opencode
+      - openchamber-state:/home/openchamber/.local/state/opencode
+      - openchamber-opencode-config:/home/openchamber/.config/opencode
+      - openchamber-ssh:/home/openchamber/.ssh
+      - openchamber-workspaces:/home/openchamber/workspaces
     environment:
       - NODE_ENV=production
       - N9ROUTER_URL=http://9router:20128
+      - OPENCHAMBER_HOST=0.0.0.0
 
 volumes:
   9router-data:
-  openchamber-data:
+  openchamber-config:
+  openchamber-share:
+  openchamber-state:
+  openchamber-opencode-config:
+  openchamber-ssh:
+  openchamber-workspaces:
