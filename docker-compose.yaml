@@ -19,15 +19,21 @@ services:
       context: .
       dockerfile: openchamber.Dockerfile
       args:
-        # Increment CACHE_BUST by 1 to force a full rebuild + wipe openchamber
-        # state on the next Coolify redeploy. Current value = 1 (fresh start).
+        # CACHE_BUST is currently set to "1" which triggered a one-time fresh
+        # build. DO NOT change this value again unless you intentionally want
+        # to wipe all openchamber data and start completely fresh.
         CACHE_BUST: "1"
     container_name: openchamber
     restart: unless-stopped
     ports:
       - "3051:3000"              # 3051 external -> 3000 internal
-    # NO named volumes - all state is ephemeral.
-    # Every redeploy starts openchamber completely fresh (no chats, no config).
+    volumes:
+      - openchamber-config:/home/openchamber/.config/openchamber
+      - openchamber-share:/home/openchamber/.local/share/opencode
+      - openchamber-state:/home/openchamber/.local/state/opencode
+      - openchamber-opencode-config:/home/openchamber/.config/opencode
+      - openchamber-ssh:/home/openchamber/.ssh
+      - openchamber-workspaces:/home/openchamber/workspaces
     environment:
       - NODE_ENV=production
       - N9ROUTER_URL=http://9router:20128
@@ -46,6 +52,11 @@ services:
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-changeme}
 
 volumes:
-  9router-data:      # persists 9router config
-  open-webui-data:   # persists Open WebUI config and chat history
-  # openchamber has NO named volumes - intentionally ephemeral
+  9router-data:
+  openchamber-config:
+  openchamber-share:
+  openchamber-state:
+  openchamber-opencode-config:
+  openchamber-ssh:
+  openchamber-workspaces:
+  open-webui-data:
