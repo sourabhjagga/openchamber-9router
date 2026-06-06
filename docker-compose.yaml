@@ -3,13 +3,13 @@ version: '3.8'
 services:
   9router:
     image: decolua/9router:latest
-    pull_policy: always          # always pull latest on redeploy
+    pull_policy: missing        # only pulls if image is not present locally
     container_name: 9router
     restart: unless-stopped
     ports:
-      - "8085:20128"             # 8085 external -> 20128 internal
+      - "8085:20128"
     volumes:
-      - 9router-data:/app/data   # persists 9router config across redeploys
+      - 9router-data:/app/data
     environment:
       - NODE_ENV=production
       - DATA_DIR=/app/data
@@ -19,16 +19,13 @@ services:
       context: .
       dockerfile: openchamber.Dockerfile
       args:
-        # DO NOT change CACHE_BUST_STATIC unless you want to deliberately wipe
-        # all openchamber data and start fresh (then increment + delete volumes).
+        # Only change CACHE_BUST_STATIC if you want to deliberately wipe all
+        # openchamber data and start completely fresh (then also delete volumes).
         CACHE_BUST_STATIC: "1"
-        # CACHE_BUST_DATE ensures every Coolify redeploy clones the latest
-        # openchamber source automatically - no manual changes needed.
-        CACHE_BUST_DATE: ${CACHE_BUST_DATE:-default}
     container_name: openchamber
     restart: unless-stopped
     ports:
-      - "3051:3000"              # 3051 external -> 3000 internal
+      - "3051:3000"
     volumes:
       - openchamber-config:/home/openchamber/.config/openchamber
       - openchamber-share:/home/openchamber/.local/share/opencode
@@ -43,13 +40,13 @@ services:
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
-    pull_policy: always          # always pull latest on redeploy
+    pull_policy: missing        # only pulls if image is not present locally
     container_name: open-webui
     restart: unless-stopped
     ports:
-      - "3052:8080"              # 3052 external -> 8080 internal
+      - "3052:8080"
     volumes:
-      - open-webui-data:/app/backend/data  # persists Open WebUI config & chats
+      - open-webui-data:/app/backend/data
     environment:
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-changeme}
 

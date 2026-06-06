@@ -2,30 +2,32 @@
 FROM oven/bun:1 AS base
 WORKDIR /app
 
-FROM base AS deps
+# ── Stage 1: fetch source ────────────────────────────────────────────────────
+# This stage clones the repo. It is intentionally kept separate so that
+# dependency install (Stage 2) can be cached independently.
+FROM base AS source
 WORKDIR /app
 
-# CACHE_BUST_STATIC: only change this if you want a deliberate full wipe of
-# openchamber data (increment the number). Do not change for routine updates.
+# CACHE_BUST_STATIC: only increment to deliberately wipe openchamber data.
 ARG CACHE_BUST_STATIC=1
 
-# CACHE_BUST_DATE: passed automatically by docker-compose at build time using
-# the current date. This ensures the git clone step always runs fresh on every
-# rebuild so openchamber always gets the latest source - no stale cache.
-ARG CACHE_BUST_DATE
-RUN echo "Build date: $CACHE_BUST_DATE"
-
-# Clone latest openchamber source (cache always invalidated by CACHE_BUST_DATE)
 RUN apt-get update && apt-get install -y git && \
     git clone https://github.com/openchamber/openchamber.git .
 
-# Install dependencies
+# ── Stage 2: install dependencies ───────────────────────────────────────────
+# Docker caches this layer. It only re-runs if bun.lockb or package.json
+# files change in the cloned repo - not on every redeploy.
+FROM source AS deps
+WORKDIR /app
 RUN bun install --frozen-lockfile --ignore-scripts
 
+# ── Stage 3: build web assets ────────────────────────────────────────────────
+# Only re-runs if source files actually changed.
 FROM deps AS builder
 WORKDIR /app
 RUN bun run build:web
 
+# ── Stage 4: lean runtime image ─────────────────────────────────────────────
 FROM oven/bun:1 AS runtime
 WORKDIR /home/openchamber
 
@@ -68,7 +70,7 @@ COPY --from=cloudflare/cloudflared@sha256:6b599ca3e974349ead3286d178da61d2919611
 
 ENV NODE_ENV=production
 
-COPY --from=deps /app/scripts/docker-entrypoint.sh /home/openchamber/openchamber-entrypoint.sh
+COPY --from=source /app/scripts/docker-entrypoint.sh /home/openchamber/openchamber-entrypoint.sh
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/web/node_modules ./packages/web/node_modules
