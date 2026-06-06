@@ -5,15 +5,21 @@ WORKDIR /app
 FROM base AS deps
 WORKDIR /app
 
-# CACHE_BUST arg - changing its value in docker-compose.yaml forces a full
-# rebuild of this image, giving openchamber a completely clean slate.
-ARG CACHE_BUST=1
+# CACHE_BUST_STATIC: only change this if you want a deliberate full wipe of
+# openchamber data (increment the number). Do not change for routine updates.
+ARG CACHE_BUST_STATIC=1
 
-# Clone latest openchamber source
+# CACHE_BUST_DATE: passed automatically by docker-compose at build time using
+# the current date. This ensures the git clone step always runs fresh on every
+# rebuild so openchamber always gets the latest source - no stale cache.
+ARG CACHE_BUST_DATE
+RUN echo "Build date: $CACHE_BUST_DATE"
+
+# Clone latest openchamber source (cache always invalidated by CACHE_BUST_DATE)
 RUN apt-get update && apt-get install -y git && \
     git clone https://github.com/openchamber/openchamber.git .
 
-# Re-run bun install against the cloned repo
+# Install dependencies
 RUN bun install --frozen-lockfile --ignore-scripts
 
 FROM deps AS builder

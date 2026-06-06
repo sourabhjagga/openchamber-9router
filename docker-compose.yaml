@@ -19,10 +19,12 @@ services:
       context: .
       dockerfile: openchamber.Dockerfile
       args:
-        # CACHE_BUST is currently set to "1" which triggered a one-time fresh
-        # build. DO NOT change this value again unless you intentionally want
-        # to wipe all openchamber data and start completely fresh.
-        CACHE_BUST: "1"
+        # DO NOT change CACHE_BUST_STATIC unless you want to deliberately wipe
+        # all openchamber data and start fresh (then increment + delete volumes).
+        CACHE_BUST_STATIC: "1"
+        # CACHE_BUST_DATE ensures every Coolify redeploy clones the latest
+        # openchamber source automatically - no manual changes needed.
+        CACHE_BUST_DATE: ${CACHE_BUST_DATE:-default}
     container_name: openchamber
     restart: unless-stopped
     ports:
