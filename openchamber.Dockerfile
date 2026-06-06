@@ -4,13 +4,14 @@ WORKDIR /app
 
 FROM base AS deps
 WORKDIR /app
-# Clone target repository and get lockfile
+
+# CACHE_BUST arg - changing its value in docker-compose.yaml forces a full
+# rebuild of this image, giving openchamber a completely clean slate.
+ARG CACHE_BUST=1
+
+# Clone latest openchamber source
 RUN apt-get update && apt-get install -y git && \
     git clone https://github.com/openchamber/openchamber.git .
-
-# Move files to current working directory root to emulate building from source
-# but with corrected desktop -> electron path
-RUN sed -i 's|COPY packages/desktop/package.json ./packages/desktop/|COPY packages/electron/package.json ./packages/electron/|g' Dockerfile
 
 # Re-run bun install against the cloned repo
 RUN bun install --frozen-lockfile --ignore-scripts
@@ -34,7 +35,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 # Replace the base image's 'bun' user (UID 1000) with 'openchamber'
-# so mounted volumes with 1000:1000 ownership work correctly.
 RUN userdel bun \
   && groupadd -g 1000 openchamber \
   && useradd -u 1000 -g 1000 -m -s /bin/bash openchamber \
@@ -43,7 +43,6 @@ RUN userdel bun \
 ENV NPM_CONFIG_PREFIX=/home/openchamber/.npm-global
 ENV PATH=${NPM_CONFIG_PREFIX}/bin:${PATH}
 
-# Create required directories before dropping privileges so we can set ownership
 RUN mkdir -p /home/openchamber/.npm-global \
              /home/openchamber/.local/share/opencode \
              /home/openchamber/.local/state/opencode \
@@ -53,13 +52,12 @@ RUN mkdir -p /home/openchamber/.npm-global \
              /home/openchamber/workspaces \
   && chown -R openchamber:openchamber /home/openchamber
 
-# Switch to openchamber user AFTER directories are created and owned by them
 USER openchamber
 
 RUN npm config set prefix /home/openchamber/.npm-global && \
   npm install -g opencode-ai
 
-# cloudflared 2026.3.0 - update digest explicitly when upgrading
+# cloudflared - update digest when upgrading
 COPY --from=cloudflare/cloudflared@sha256:6b599ca3e974349ead3286d178da61d291961182ec3fe9c505e1dd02c8ac31b0 /usr/local/bin/cloudflared /usr/local/bin/cloudflared
 
 ENV NODE_ENV=production
