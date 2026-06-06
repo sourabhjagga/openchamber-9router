@@ -3,7 +3,7 @@ version: '3.8'
 services:
   9router:
     image: decolua/9router:latest
-    pull_policy: missing        # only pulls if image is not present locally
+    pull_policy: always          # checks registry on every redeploy, only downloads changed layers
     container_name: 9router
     restart: unless-stopped
     ports:
@@ -19,7 +19,7 @@ services:
       context: .
       dockerfile: openchamber.Dockerfile
       args:
-        # Only change CACHE_BUST_STATIC if you want to deliberately wipe all
+        # Only increment CACHE_BUST_STATIC if you want to deliberately wipe all
         # openchamber data and start completely fresh (then also delete volumes).
         CACHE_BUST_STATIC: "1"
     container_name: openchamber
@@ -40,7 +40,7 @@ services:
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
-    pull_policy: missing        # only pulls if image is not present locally
+    pull_policy: always          # checks registry on every redeploy, only downloads changed layers
     container_name: open-webui
     restart: unless-stopped
     ports:
