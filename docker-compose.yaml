@@ -14,30 +14,6 @@ services:
       - NODE_ENV=production
       - DATA_DIR=/app/data
 
-  openchamber:
-    build:
-      context: .
-      dockerfile: openchamber.Dockerfile
-      args:
-        # Only increment CACHE_BUST_STATIC if you want to deliberately wipe all
-        # openchamber data and start completely fresh (then also delete volumes).
-        CACHE_BUST_STATIC: "1"
-    container_name: openchamber
-    restart: unless-stopped
-    ports:
-      - "3051:3000"
-    volumes:
-      - openchamber-config:/home/openchamber/.config/openchamber
-      - openchamber-share:/home/openchamber/.local/share/opencode
-      - openchamber-state:/home/openchamber/.local/state/opencode
-      - openchamber-opencode-config:/home/openchamber/.config/opencode
-      - openchamber-ssh:/home/openchamber/.ssh
-      - openchamber-workspaces:/home/openchamber/workspaces
-    environment:
-      - NODE_ENV=production
-      - N9ROUTER_URL=http://9router:20128
-      - OPENCHAMBER_HOST=0.0.0.0
-
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
     pull_policy: always          # checks registry on every redeploy, only downloads changed layers
@@ -52,10 +28,4 @@ services:
 
 volumes:
   9router-data:
-  openchamber-config:
-  openchamber-share:
-  openchamber-state:
-  openchamber-opencode-config:
-  openchamber-ssh:
-  openchamber-workspaces:
   open-webui-data:
