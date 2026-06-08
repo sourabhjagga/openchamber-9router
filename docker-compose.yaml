@@ -55,6 +55,12 @@ services:
     restart: unless-stopped
     ports:
       - "3051:3000"
+    entrypoint:
+      - sh
+      - -c
+      - |
+        rm -f /home/openchamber/.config/openchamber/run/openchamber-*.pid
+        exec sh /home/openchamber/openchamber-entrypoint.sh
     volumes:
       - openchamber-config:/home/openchamber/.config/openchamber
       - openchamber-share:/home/openchamber/.local/share/opencode
@@ -101,7 +107,6 @@ services:
   # ---------------------------------------------------------------------------
   omnirouter:
     image: diegosouzapw/omniroute:latest
-    platform: linux/amd64
     pull_policy: always
     container_name: omnirouter
     restart: unless-stopped

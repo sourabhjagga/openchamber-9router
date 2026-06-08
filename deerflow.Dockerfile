@@ -86,7 +86,7 @@ ENV DEER_FLOW_HOME=/app/backend/.deer-flow
 ENV DEER_FLOW_CONFIG_PATH=/app/backend/config.yaml
 ENV DEER_FLOW_EXTENSIONS_CONFIG_PATH=/app/backend/extensions_config.json
 ENV NODE_ENV=production
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/backend
 
 RUN mkdir -p /app/backend/.deer-flow
 
