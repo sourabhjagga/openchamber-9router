@@ -1,9 +1,20 @@
 version: '3.8'
 
+# =============================================================================
+# SERVICES
+# Each service uses pull_policy: always so updates are applied on redeploy.
+# Named volumes ensure all config, chats, and projects survive every redeploy.
+# =============================================================================
+
 services:
+
+  # ---------------------------------------------------------------------------
+  # 9router — AI router/proxy
+  # Config persists via: 9router-data
+  # ---------------------------------------------------------------------------
   9router:
     image: decolua/9router:latest
-    pull_policy: always          # checks registry on every redeploy, only downloads changed layers
+    pull_policy: always
     container_name: 9router
     restart: unless-stopped
     ports:
@@ -14,9 +25,13 @@ services:
       - NODE_ENV=production
       - DATA_DIR=/app/data
 
+  # ---------------------------------------------------------------------------
+  # Open WebUI — Chat UI for LLMs
+  # Config + chats persist via: open-webui-data
+  # ---------------------------------------------------------------------------
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
-    pull_policy: always          # checks registry on every redeploy, only downloads changed layers
+    pull_policy: always
     container_name: open-webui
     restart: unless-stopped
     ports:
@@ -26,6 +41,82 @@ services:
     environment:
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-changeme}
 
+  # ---------------------------------------------------------------------------
+  # OpenChamber — AI coding assistant (web UI)
+  # Config + chats + workspaces persist via named volumes below
+  # ---------------------------------------------------------------------------
+  openchamber:
+    build:
+      context: .
+      dockerfile: openchamber.Dockerfile
+      args:
+        # DO NOT change CACHE_BUST_STATIC unless you deliberately want a full
+        # fresh wipe of openchamber data (then also delete its volumes).
+        CACHE_BUST_STATIC: "2"
+    container_name: openchamber
+    restart: unless-stopped
+    ports:
+      - "3051:3000"
+    volumes:
+      - openchamber-config:/home/openchamber/.config/openchamber
+      - openchamber-share:/home/openchamber/.local/share/opencode
+      - openchamber-state:/home/openchamber/.local/state/opencode
+      - openchamber-opencode-config:/home/openchamber/.config/opencode
+      - openchamber-ssh:/home/openchamber/.ssh
+      - openchamber-workspaces:/home/openchamber/workspaces
+    environment:
+      - NODE_ENV=production
+      - N9ROUTER_URL=http://9router:20128
+      - OPENCHAMBER_HOST=0.0.0.0
+
+  # ---------------------------------------------------------------------------
+  # DeerFlow — ByteDance SuperAgent (deep research + coding agent)
+  # Config, threads, and agent data persist via: deerflow-data
+  # REQUIRED env vars to set in Coolify:
+  #   BETTER_AUTH_SECRET     — random secret string for auth sessions
+  #   DEER_FLOW_INTERNAL_AUTH_TOKEN — internal token for multi-worker channels
+  # ---------------------------------------------------------------------------
+  deerflow:
+    image: ghcr.io/bytedance/deer-flow:main
+    pull_policy: always
+    container_name: deerflow
+    restart: unless-stopped
+    ports:
+      - "2026:8000"
+    volumes:
+      - deerflow-data:/app/backend/.deer-flow    # threads, agent memory, outputs
+      - deerflow-config:/app/backend/config      # config.yaml and extensions
+    environment:
+      - DEER_FLOW_HOME=/app/backend/.deer-flow
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-changeme-set-a-real-secret}
+      - DEER_FLOW_INTERNAL_AUTH_TOKEN=${DEER_FLOW_INTERNAL_AUTH_TOKEN:-changeme}
+
+  # ---------------------------------------------------------------------------
+  # OmniRouter (OmniRoute) — Unified AI gateway (160+ providers, one endpoint)
+  # Config persists via: omnirouter-data
+  # ---------------------------------------------------------------------------
+  omnirouter:
+    image: diegosouzapw/omniroute:latest
+    pull_policy: always
+    container_name: omnirouter
+    restart: unless-stopped
+    ports:
+      - "8086:20128"
+    volumes:
+      - omnirouter-data:/app/data
+
+# =============================================================================
+# VOLUMES — all named so data survives every redeploy and update
+# =============================================================================
 volumes:
   9router-data:
   open-webui-data:
+  openchamber-config:
+  openchamber-share:
+  openchamber-state:
+  openchamber-opencode-config:
+  openchamber-ssh:
+  openchamber-workspaces:
+  deerflow-data:
+  deerflow-config:
+  omnirouter-data:
