@@ -50,8 +50,6 @@ services:
       context: .
       dockerfile: openchamber.Dockerfile
       args:
-        # DO NOT change CACHE_BUST_STATIC unless you deliberately want a full
-        # fresh wipe of openchamber data (then also delete its volumes).
         CACHE_BUST_STATIC: "2"
     container_name: openchamber
     restart: unless-stopped
@@ -71,32 +69,39 @@ services:
 
   # ---------------------------------------------------------------------------
   # DeerFlow — ByteDance SuperAgent (deep research + coding agent)
-  # Config, threads, and agent data persist via: deerflow-data
-  # REQUIRED env vars to set in Coolify:
-  #   BETTER_AUTH_SECRET     — random secret string for auth sessions
-  #   DEER_FLOW_INTERNAL_AUTH_TOKEN — internal token for multi-worker channels
+  # Built from source so it works on ARM64 AND AMD64 servers.
+  # Data persists via: deerflow-data, deerflow-config
   # ---------------------------------------------------------------------------
   deerflow:
-    image: ghcr.io/bytedance/deer-flow:main
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: deerflow.Dockerfile
+      args:
+        # Increment CACHE_BUST_DEERFLOW only if you want a completely fresh
+        # DeerFlow build (e.g. after a major upstream update).
+        CACHE_BUST_DEERFLOW: "1"
     container_name: deerflow
     restart: unless-stopped
     ports:
-      - "2026:8000"
+      - "2026:3000"
     volumes:
-      - deerflow-data:/app/backend/.deer-flow    # threads, agent memory, outputs
-      - deerflow-config:/app/backend/config      # config.yaml and extensions
+      - deerflow-data:/app/backend/.deer-flow
+      - deerflow-config:/app/backend/config
     environment:
       - DEER_FLOW_HOME=/app/backend/.deer-flow
-      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-changeme-set-a-real-secret}
+      - DEER_FLOW_CONFIG_PATH=/app/backend/config.yaml
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-changeme}
       - DEER_FLOW_INTERNAL_AUTH_TOKEN=${DEER_FLOW_INTERNAL_AUTH_TOKEN:-changeme}
+      - NODE_ENV=production
 
   # ---------------------------------------------------------------------------
   # OmniRouter (OmniRoute) — Unified AI gateway (160+ providers, one endpoint)
+  # platform: linux/amd64 enables QEMU emulation on ARM servers.
   # Config persists via: omnirouter-data
   # ---------------------------------------------------------------------------
   omnirouter:
     image: diegosouzapw/omniroute:latest
+    platform: linux/amd64
     pull_policy: always
     container_name: omnirouter
     restart: unless-stopped
