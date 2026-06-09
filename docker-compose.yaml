@@ -25,21 +25,6 @@ services:
       - NODE_ENV=production
       - DATA_DIR=/app/data
 
-  # ---------------------------------------------------------------------------
-  # Open WebUI — Chat UI for LLMs
-  # Config + chats persist via: open-webui-data
-  # ---------------------------------------------------------------------------
-  open-webui:
-    image: ghcr.io/open-webui/open-webui:main
-    pull_policy: always
-    container_name: open-webui
-    restart: unless-stopped
-    ports:
-      - "3052:8080"
-    volumes:
-      - open-webui-data:/app/backend/data
-    environment:
-      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-changeme}
 
   # ---------------------------------------------------------------------------
   # OpenChamber — AI coding assistant (web UI)
@@ -73,60 +58,17 @@ services:
       - N9ROUTER_URL=http://9router:20128
       - OPENCHAMBER_HOST=0.0.0.0
 
-  # ---------------------------------------------------------------------------
-  # DeerFlow — ByteDance SuperAgent (deep research + coding agent)
-  # Built from source so it works on ARM64 AND AMD64 servers.
-  # Data persists via: deerflow-data, deerflow-config
-  # ---------------------------------------------------------------------------
-  deerflow:
-    build:
-      context: .
-      dockerfile: deerflow.Dockerfile
-      args:
-        # Increment CACHE_BUST_DEERFLOW only if you want a completely fresh
-        # DeerFlow build (e.g. after a major upstream update).
-        CACHE_BUST_DEERFLOW: "1"
-    container_name: deerflow
-    restart: unless-stopped
-    ports:
-      - "2026:3000"
-    volumes:
-      - deerflow-data:/app/backend/.deer-flow
-      - deerflow-config:/app/backend/config
-    environment:
-      - DEER_FLOW_HOME=/app/backend/.deer-flow
-      - DEER_FLOW_CONFIG_PATH=/app/backend/config.yaml
-      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-changeme}
-      - DEER_FLOW_INTERNAL_AUTH_TOKEN=${DEER_FLOW_INTERNAL_AUTH_TOKEN:-changeme}
-      - NODE_ENV=production
 
-  # ---------------------------------------------------------------------------
-  # OmniRouter (OmniRoute) — Unified AI gateway (160+ providers, one endpoint)
-  # platform: linux/amd64 enables QEMU emulation on ARM servers.
-  # Config persists via: omnirouter-data
-  # ---------------------------------------------------------------------------
-  omnirouter:
-    image: diegosouzapw/omniroute:latest
-    pull_policy: always
-    container_name: omnirouter
-    restart: unless-stopped
-    ports:
-      - "8086:20128"
-    volumes:
-      - omnirouter-data:/app/data
 
 # =============================================================================
 # VOLUMES — all named so data survives every redeploy and update
 # =============================================================================
 volumes:
   9router-data:
-  open-webui-data:
+
   openchamber-config:
   openchamber-share:
   openchamber-state:
   openchamber-opencode-config:
   openchamber-ssh:
   openchamber-workspaces:
-  deerflow-data:
-  deerflow-config:
-  omnirouter-data:
