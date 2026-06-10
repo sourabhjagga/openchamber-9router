@@ -31,7 +31,8 @@ RUN bun run build:web
 FROM oven/bun:1 AS runtime
 WORKDIR /home/openchamber
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update && apt-get install -y --no-install-recommends \
   bash \
   ca-certificates \
   git \
