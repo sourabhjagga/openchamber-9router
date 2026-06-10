@@ -31,11 +31,8 @@ services:
   # Config + chats + workspaces persist via named volumes below
   # ---------------------------------------------------------------------------
   openchamber:
-    build:
-      context: .
-      dockerfile: openchamber.Dockerfile
-      args:
-        CACHE_BUST_STATIC: "2"
+    image: sourabhjagga/openchamber:latest
+    pull_policy: always
     container_name: openchamber
     restart: unless-stopped
     ports:

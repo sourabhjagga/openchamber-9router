@@ -1,0 +1,52 @@
+name: Build and Push OpenChamber Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'openchamber.Dockerfile'
+      - '.github/workflows/docker-build.yml'
+  schedule:
+    - cron: '0 0 * * 0' # Run automatically every Sunday at midnight UTC
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Set up QEMU for multi-platform support (ARM64)
+        # Using official QEMU action for multi-arch build
+      - name: Set up QEMU Action
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./openchamber.Dockerfile
+          platforms: linux/arm64
+          push: true
+          build-args: |
+            CACHE_BUST_STATIC=${{ github.run_id }}
+          tags: |
+            sourabhjagga/openchamber:latest
+            sourabhjagga/openchamber:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
