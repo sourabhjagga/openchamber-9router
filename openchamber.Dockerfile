@@ -11,10 +11,11 @@ WORKDIR /app
 # CACHE_BUST_STATIC: only increment to deliberately wipe openchamber data.
 ARG CACHE_BUST_STATIC=1
 
-COPY patch-core-routes.js /app/patch-core-routes.js
+COPY patch-core-routes.js /tmp/patch-core-routes.js
 RUN apt-get update && apt-get install -y git && \
     git clone https://github.com/openchamber/openchamber.git . && \
-    bun /app/patch-core-routes.js
+    bun /tmp/patch-core-routes.js
+
 
 # ── Stage 2: install dependencies ───────────────────────────────────────────
 # Docker caches this layer. It only re-runs if bun.lockb or package.json
