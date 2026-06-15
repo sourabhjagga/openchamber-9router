@@ -54,7 +54,7 @@ services:
       - NODE_ENV=production
       - N9ROUTER_URL=http://9router:20128
       - OPENCHAMBER_HOST=0.0.0.0
-      - OPENCHAMBER_UI_PASSWORD=your_secure_password_here
+      - OPENCHAMBER_UI_PASSWORD=${OPENCHAMBER_UI_PASSWORD}
 
 
 
