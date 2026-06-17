@@ -13,19 +13,12 @@ on:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm64
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: actions/github-script@v7
-        with:
-          script: |
-            // Set up QEMU for multi-platform support (ARM64)
-        # Using official QEMU action for multi-arch build
-      - name: Set up QEMU Action
-        uses: docker/setup-qemu-action@v3
+
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
