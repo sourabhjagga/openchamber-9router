@@ -41,5 +41,4 @@ jobs:
           tags: |
             sourabhjagga/openchamber:latest
             sourabhjagga/openchamber:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+
