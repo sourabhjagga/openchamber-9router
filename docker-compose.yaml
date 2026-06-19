@@ -13,7 +13,7 @@ services:
   # Config persists via: 9router-data
   # ---------------------------------------------------------------------------
   9router:
-    image: decolua/9router:latest
+    image: sourabhjagga/9router:latest
     pull_policy: always
     container_name: 9router
     restart: unless-stopped
