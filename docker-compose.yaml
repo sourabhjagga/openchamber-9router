@@ -4,12 +4,87 @@ version: '3.8'
 # SERVICES
 # Each service uses pull_policy: always so updates are applied on redeploy.
 # Named volumes ensure all config, chats, and projects survive every redeploy.
+# All services share one Docker network — internal communication uses service
+# names as hostnames (e.g. 9router → headroom-proxy via http://headroom-proxy:8787)
 # =============================================================================
 
 services:
 
   # ---------------------------------------------------------------------------
+  # headroom-proxy — LLM cost-saving proxy (Rust, OpenAI-compatible API)
+  # Sits between 9router and upstream LLM APIs.
+  # Uses ghcr.io multi-arch image — ARM64 layer pulled natively on Oracle VM.
+  # Qdrant + Neo4j are its internal dependencies (no host port exposure needed).
+  # ---------------------------------------------------------------------------
+  headroom-proxy:
+    image: ghcr.io/headroomlabs-ai/headroom:latest
+    pull_policy: always
+    container_name: headroom-proxy
+    restart: unless-stopped
+    command: ["--host", "0.0.0.0"]
+    ports:
+      - "8787:8787"
+    environment:
+      - HEADROOM_HOST=0.0.0.0
+      # To override the upstream LLM endpoint (e.g. point to a local Ollama):
+      # - OPENAI_TARGET_API_URL=http://host-gateway:11434
+    volumes:
+      - headroom-workspace:/home/nonroot/.headroom
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8787/readyz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      qdrant:
+        condition: service_started
+      neo4j:
+        condition: service_started
+
+  # ---------------------------------------------------------------------------
+  # qdrant — Vector database for headroom semantic search
+  # Internal only — no host port binding needed for production use.
+  # ---------------------------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:v1.17.1
+    container_name: qdrant
+    restart: unless-stopped
+    # Ports intentionally NOT exposed to host — headroom-proxy reaches qdrant
+    # via internal Docker DNS: http://qdrant:6333
+    expose:
+      - "6333"
+      - "6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+
+  # ---------------------------------------------------------------------------
+  # neo4j — Graph database for headroom memory and multi-hop reasoning
+  # Internal only — no host port binding needed for production use.
+  # ---------------------------------------------------------------------------
+  neo4j:
+    image: neo4j:5.26
+    container_name: neo4j
+    restart: unless-stopped
+    # Ports intentionally NOT exposed to host — headroom-proxy reaches neo4j
+    # via internal Docker DNS: bolt://neo4j:7687
+    expose:
+      - "7474"
+      - "7687"
+    volumes:
+      - neo4j-data:/data
+    environment:
+      - NEO4J_AUTH=${NEO4J_AUTH:-neo4j/devpassword}
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_apoc_import_file_use__neo4j__config=true
+
+  # ---------------------------------------------------------------------------
   # 9router — AI router/proxy
+  # Routes all LLM API calls through headroom-proxy for cost savings + memory.
   # Config persists via: 9router-data
   # ---------------------------------------------------------------------------
   9router:
@@ -24,11 +99,14 @@ services:
     environment:
       - NODE_ENV=production
       - DATA_DIR=/app/data
-
+    depends_on:
+      headroom-proxy:
+        condition: service_healthy
 
   # ---------------------------------------------------------------------------
   # OpenChamber — AI coding assistant (web UI)
-  # Config + chats + workspaces persist via named volumes below
+  # Config + chats + workspaces persist via named volumes below.
+  # Points to 9router which in turn routes through headroom-proxy.
   # ---------------------------------------------------------------------------
   openchamber:
     image: sourabhjagga/openchamber:latest
@@ -55,15 +133,23 @@ services:
       - N9ROUTER_URL=http://9router:20128
       - OPENCHAMBER_HOST=0.0.0.0
       - OPENCHAMBER_UI_PASSWORD=${OPENCHAMBER_UI_PASSWORD}
-
+    depends_on:
+      - 9router
 
 
 # =============================================================================
 # VOLUMES — all named so data survives every redeploy and update
 # =============================================================================
 volumes:
+  # Headroom
+  headroom-workspace:
+  qdrant-data:
+  neo4j-data:
+
+  # 9router
   9router-data:
 
+  # OpenChamber
   openchamber-config:
   openchamber-share:
   openchamber-state:
