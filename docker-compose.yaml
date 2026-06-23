@@ -2,27 +2,38 @@ version: '3.8'
 
 # =============================================================================
 # SERVICES
-# All five services share one explicit Docker network (headroom-net) so
-# inter-service communication uses Docker DNS (service name as hostname).
+# All five services share one Docker network so inter-service communication
+# uses Docker DNS (service name as hostname) — no host IP needed.
 #
 # Startup order:
 #   neo4j + qdrant  →  headroom-proxy (waits healthy)  →  9router  →  openchamber
+#
+# headroom-proxy image: docker.io/sourabhjagga/headroom:latest
+#   Built from headroom v0.27.0 source on a native ubuntu-24.04-arm runner
+#   via .github/workflows/build-headroom-arm64.yml in this repo.
+#   Publicly pullable from Docker Hub — no auth required in Coolify.
 # =============================================================================
 
 services:
 
+  # ---------------------------------------------------------------------------
+  # headroom-proxy — LLM cost-saving proxy (Rust, OpenAI-compatible API)
+  # Sits between 9router and upstream LLM APIs.
+  # Built natively for linux/arm64 and hosted on Docker Hub.
+  # In 9router UI, set Headroom Proxy URL to: http://headroom-proxy:8787
+  # ---------------------------------------------------------------------------
   headroom-proxy:
     image: docker.io/sourabhjagga/headroom:latest
     pull_policy: always
     container_name: headroom-proxy
     restart: unless-stopped
     command: ["--host", "0.0.0.0"]
-    networks:
-      - headroom-net
     ports:
       - "8787:8787"
     environment:
       - HEADROOM_HOST=0.0.0.0
+      # To route headroom upstream to local Ollama instead of api.openai.com:
+      # - OPENAI_TARGET_API_URL=http://host-gateway:11434
     volumes:
       - headroom-workspace:/home/nonroot/.headroom
     healthcheck:
@@ -37,12 +48,14 @@ services:
       neo4j:
         condition: service_started
 
+  # ---------------------------------------------------------------------------
+  # qdrant — Vector database for headroom semantic search
+  # Internal only — reachable by headroom-proxy via http://qdrant:6333
+  # ---------------------------------------------------------------------------
   qdrant:
     image: qdrant/qdrant:v1.17.1
     container_name: qdrant
     restart: unless-stopped
-    networks:
-      - headroom-net
     expose:
       - "6333"
       - "6334"
@@ -51,12 +64,14 @@ services:
     environment:
       - QDRANT__SERVICE__GRPC_PORT=6334
 
+  # ---------------------------------------------------------------------------
+  # neo4j — Graph database for headroom memory
+  # Internal only — reachable by headroom-proxy via bolt://neo4j:7687
+  # ---------------------------------------------------------------------------
   neo4j:
     image: neo4j:5.26
     container_name: neo4j
     restart: unless-stopped
-    networks:
-      - headroom-net
     expose:
       - "7474"
       - "7687"
@@ -69,13 +84,15 @@ services:
       - NEO4J_apoc_import_file_enabled=true
       - NEO4J_apoc_import_file_use__neo4j__config=true
 
+  # ---------------------------------------------------------------------------
+  # 9router — AI router/proxy
+  # Routes all LLM API calls through headroom-proxy via internal Docker DNS.
+  # ---------------------------------------------------------------------------
   9router:
     image: sourabhjagga/9router:latest
     pull_policy: always
     container_name: 9router
     restart: unless-stopped
-    networks:
-      - headroom-net
     ports:
       - "8085:20128"
     volumes:
@@ -87,13 +104,15 @@ services:
       headroom-proxy:
         condition: service_healthy
 
+  # ---------------------------------------------------------------------------
+  # OpenChamber — AI coding assistant (web UI)
+  # Points to 9router which routes through headroom-proxy.
+  # ---------------------------------------------------------------------------
   openchamber:
     image: sourabhjagga/openchamber:latest
     pull_policy: always
     container_name: openchamber
     restart: unless-stopped
-    networks:
-      - headroom-net
     ports:
       - "3051:3000"
     entrypoint:
@@ -119,15 +138,7 @@ services:
 
 
 # =============================================================================
-# NETWORKS
-# =============================================================================
-networks:
-  headroom-net:
-    driver: bridge
-
-
-# =============================================================================
-# VOLUMES
+# VOLUMES — all named so data survives every redeploy
 # =============================================================================
 volumes:
   headroom-workspace:
