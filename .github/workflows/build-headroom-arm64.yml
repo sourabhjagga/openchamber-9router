@@ -32,17 +32,12 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          # Use the standard Dockerfile in headroom repo root
           file: Dockerfile
           platforms: linux/arm64
           push: true
-          tags: |
-            docker.io/sourabhjagga/headroom:latest
-            docker.io/sourabhjagga/headroom:v0.27.0
-          # Pass build args headroom Dockerfile expects
+          tags: docker.io/sourabhjagga/headroom:latest
           build-args: |
             TARGETPLATFORM=linux/arm64
-          # Cache layers between runs to speed up subsequent builds
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: false
